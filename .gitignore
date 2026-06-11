@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# Added by code-review-graph
+.code-review-graph/
+
+# Sensitive Data
+downloads/leaderboard.json
+
+# Claude
+.claude/
