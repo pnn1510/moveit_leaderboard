@@ -14,4 +14,4 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{ include = "leaderboard" }]
+packages = [{ include = "moveit_leaderboard" }]
