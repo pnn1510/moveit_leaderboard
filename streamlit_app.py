@@ -1,15 +1,17 @@
 import pandas as pd
 import streamlit as st
 
+from leaderboard.install import run_once
 from leaderboard.services.athlete_services import (
     filter_athlete,
     get_athlete,
     get_raw_athlete_activies_by_uid,
 )
 
+
 # Set wide layout for a modern, dashboard feel
 st.set_page_config(page_title="Athlete Leaderboard", page_icon="🏃‍♂️", layout="wide")
-
+run_once()
 
 # --- Model --- #
 
@@ -121,9 +123,13 @@ def main():
             "streak": st.column_config.TextColumn(
                 "Current Streak", help="Consecutive active days"
             ),
+            "company": None,
             "data_uid": None,
             "activities": st.column_config.NumberColumn(
                 "Activities Count", format="%d"
+            ),
+            "Run": st.column_config.NumberColumn(
+                "Run", format="%f km"
             ),
         },
         hide_index=True,

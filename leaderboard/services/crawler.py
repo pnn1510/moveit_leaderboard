@@ -57,7 +57,7 @@ def fetch_all_rows(page: Page) -> list[dict]:
 
 def crawl() -> list[dict]:
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(LEADERBOARD_URL, wait_until="load", timeout=60000)
         page.wait_for_timeout(3000)

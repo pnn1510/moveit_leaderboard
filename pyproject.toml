@@ -1,17 +1,15 @@
 [project]
-name = "moveit-leaderboard"
+name = "leaderboard"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "pandas>=3.0.3",
-    "playwright>=1.60.0",
+    "playwright==1.49.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
     "streamlit>=1.58.0",
     "streamlit-ace>=0.1.1",
 ]
 
-[tool.poetry]
-packages = [{ include = "moveit_leaderboard" }]
