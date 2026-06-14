@@ -105,38 +105,46 @@ def main():
 
     # --- 5. FILTER LOGIC & MAIN TABLE ---
     # Apply interactive filters to the dataframe
-    filtered_df = df[(df["name"].str.contains(search_query, case=False, na=False))]
 
     # Modern Streamlit Dataframe configuration with custom columns
-    st.dataframe(
-        filtered_df,
-        column_config={
-            "rank": st.column_config.NumberColumn(
-                "Rank", format="%d", help="Current leaderboard standing"
-            ),
-            "name": st.column_config.TextColumn("Athlete Name"),
-            "points": st.column_config.ProgressColumn(
-                "Total Points",
-                help="Accumulated activity points",
-                format="%d",
-                min_value=0,
-                max_value=int(df["points"].max()),
-            ),
-            "streak": st.column_config.TextColumn(
-                "Current Streak", help="Consecutive active days"
-            ),
-            "company": None,
-            "data_uid": None,
-            "activities": st.column_config.NumberColumn(
-                "Activities Count", format="%d"
-            ),
-            "Run": st.column_config.NumberColumn(
-                "Run", format="%f km"
-            ),
-        },
-        hide_index=True,
-        width='content',
-    )
+    if not df.empty:
+        filtered_df = df[(df["name"].str.contains(search_query, case=False, na=False))]
+
+        st.dataframe(
+            filtered_df,
+            column_config={
+                "rank": st.column_config.NumberColumn(
+                    "Rank", format="%d", help="Current leaderboard standing"
+                ),
+                "name": st.column_config.TextColumn("Athlete Name"),
+                "points": st.column_config.ProgressColumn(
+                    "Total Points",
+                    help="Accumulated activity points",
+                    format="%d",
+                    min_value=0,
+                    max_value=int(df["points"].max()),
+                ),
+                "streak": st.column_config.TextColumn(
+                    "Current Streak", help="Consecutive active days"
+                ),
+                "company": None,
+                "data_uid": None,
+                "activities": st.column_config.NumberColumn(
+                    "Activities Count", format="%d"
+                ),
+                "Run": st.column_config.NumberColumn(
+                    "Run", format="%f km"
+                ),
+            },
+            hide_index=True,
+            width='content',
+        )
+    else:
+        with st.spinner("Processing data, please wait..."):
+            # Put your time-consuming code block here
+            time.sleep(3) 
+            st.rerun()
+
 
 if __name__ == "__main__":
     try:
