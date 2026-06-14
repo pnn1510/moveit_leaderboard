@@ -1,66 +1,68 @@
 import pandas as pd
 import streamlit as st
+import requests
+import subprocess
+import time 
+import os 
 
-from leaderboard.install import run_once
-from leaderboard.services.athlete_services import (
-    filter_athlete,
-    get_athlete,
-    get_raw_athlete_activies_by_uid,
-)
+os.environ["ACTIVIES_URL"] = st.secrets["ACTIVIES_URL"]
+os.environ["LEADERBOARD_URL"] = st.secrets["ACTIVIES_URL"]
 
+# 1. Start FastAPI in the background on localhost
+@st.cache_resource
+def start_fastapi():
+    process = subprocess.Popen(
+        ["uvicorn", "fastapi_app:app", "--host", "127.0.0.1", "--port", "8000"]
+    )
+    time.sleep(2) # Give the server a moment to spin up
+    return process
+
+# Trigger the background process
+fastapi_process = start_fastapi()
 
 # Set wide layout for a modern, dashboard feel
 st.set_page_config(page_title="Athlete Leaderboard", page_icon="🏃‍♂️", layout="wide")
-run_once()
 
-# --- Model --- #
+FASTAPI_URL = "http://127.0.0.1:8000/leaderboard"
 
+@st.cache_data(ttl=60)  # short TTL, just to avoid hammering API on every rerun
+def fetch_leaderboard_payload():
+    try:
+        resp = requests.get(FASTAPI_URL)
+        resp.raise_for_status()
+        payload = resp.json()
+        return pd.DataFrame(payload["data"]), payload["last_updated"]
+    
+    except requests.exceptions.HTTPError:
+        st.error(f"Backend API returned an HTTP error: {resp.status_code}")
+        # Render the raw HTML/text response so you can see what went wrong
+        st.code(resp.text[:1000], language="html") 
+        return pd.DataFrame(), None
 
-# --- 1. DATA FETCHING (Simulating your function) ---
-def fetch_athlete_activities(uid: str) -> pd.DataFrame:
-    resp = get_raw_athlete_activies_by_uid(uid)
-    activities = resp.json().get("result", [])
-    df = pd.DataFrame(activities)
-    if df.empty:
-        return df
-    df["uid"] = uid
-    return df
+    except requests.exceptions.JSONDecodeError:
+        st.error("Backend did not return valid JSON. It might be sending an HTML error page.")
+        st.code(resp.text[:1000], language="html")
+        return pd.DataFrame(), None
 
+    except Exception as e:
+        st.error(f"Could not connect to the backend: {e}")
+        return pd.DataFrame(), None
 
 @st.cache_data(ttl=3600)
-def fetch_leaderboard_payload():
-    raw_data = filter_athlete(get_athlete())
-    df = pd.DataFrame([athlete.model_dump() for athlete in raw_data])
-
-    # Fetch and aggregate activities per athlete
-    activity_frames = [
-        fetch_athlete_activities(a["data_uid"]) for a in df.to_dict("records")
-    ]
-    activities_df = pd.concat(activity_frames, ignore_index=True)
-
-    agg = (
-        activities_df.groupby(["uid", "type"])["distanceKm"]
-        .sum()
-        .unstack(fill_value=0)
-        .reset_index()
-    )
-
-    # Enrich leaderboard with aggregated distances
-    df = df.merge(agg, left_on="data_uid", right_on="uid", how="left").drop(
-        columns="uid"
-    )
-
-    return df
-
+def refresh_leaderboard_payload():
+    requests.post(FASTAPI_URL + "/refresh")
+    return 
+    
 
 def main():
-
-    # --- 3. APP HEADER & METRICS ---
     st.title("🏃‍♂️ Performance Leaderboard")
     st.markdown("Track real-time athlete rankings, points, and activity streaks.")
     st.write("---")
+    refresh_leaderboard_payload()
+    df, last_updated = fetch_leaderboard_payload()
+   
+    st.caption(f"Last updated: {last_updated}")
 
-    df = fetch_leaderboard_payload()
     # Top 3 Podium Highlights
     st.subheader("🏆 Top Performers")
     pod1, pod2, pod3 = st.columns(3)
@@ -106,35 +108,45 @@ def main():
     filtered_df = df[(df["name"].str.contains(search_query, case=False, na=False))]
 
     # Modern Streamlit Dataframe configuration with custom columns
-    st.dataframe(
-        filtered_df,
-        column_config={
-            "rank": st.column_config.NumberColumn(
-                "Rank", format="%d", help="Current leaderboard standing"
-            ),
-            "name": st.column_config.TextColumn("Athlete Name"),
-            "points": st.column_config.ProgressColumn(
-                "Total Points",
-                help="Accumulated activity points",
-                format="%d",
-                min_value=0,
-                max_value=int(df["points"].max()),
-            ),
-            "streak": st.column_config.TextColumn(
-                "Current Streak", help="Consecutive active days"
-            ),
-            "company": None,
-            "data_uid": None,
-            "activities": st.column_config.NumberColumn(
-                "Activities Count", format="%d"
-            ),
-            "Run": st.column_config.NumberColumn(
-                "Run", format="%f km"
-            ),
-        },
-        hide_index=True,
-        width='content',
-    )
+    if not df.empty:
+        st.dataframe(
+            filtered_df,
+            column_config={
+                "rank": st.column_config.NumberColumn(
+                    "Rank", format="%d", help="Current leaderboard standing"
+                ),
+                "name": st.column_config.TextColumn("Athlete Name"),
+                "points": st.column_config.ProgressColumn(
+                    "Total Points",
+                    help="Accumulated activity points",
+                    format="%d",
+                    min_value=0,
+                    max_value=int(df["points"].max()),
+                ),
+                "streak": st.column_config.TextColumn(
+                    "Current Streak", help="Consecutive active days"
+                ),
+                "company": None,
+                "data_uid": None,
+                "activities": st.column_config.NumberColumn(
+                    "Activities Count", format="%d"
+                ),
+                "Run": st.column_config.NumberColumn(
+                    "Run", format="%f km"
+                ),
+            },
+            hide_index=True,
+            width='content',
+        )
+    else:
+        with st.spinner("Processing data, please wait..."):
+            # Put your time-consuming code block here
+            time.sleep(3) 
+            st.rerun()
 
 
-main()
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        fastapi_process.kill()
