@@ -1,66 +1,35 @@
 import pandas as pd
 import streamlit as st
-
-from leaderboard.install import run_once
-from leaderboard.services.athlete_services import (
-    filter_athlete,
-    get_athlete,
-    get_raw_athlete_activies_by_uid,
-)
-
+import requests
 
 # Set wide layout for a modern, dashboard feel
 st.set_page_config(page_title="Athlete Leaderboard", page_icon="🏃‍♂️", layout="wide")
-run_once()
-
-# --- Model --- #
 
 
-# --- 1. DATA FETCHING (Simulating your function) ---
-def fetch_athlete_activities(uid: str) -> pd.DataFrame:
-    resp = get_raw_athlete_activies_by_uid(uid)
-    activities = resp.json().get("result", [])
-    df = pd.DataFrame(activities)
-    if df.empty:
-        return df
-    df["uid"] = uid
-    return df
+FASTAPI_URL = "http://localhost:8000/leaderboard"
 
+@st.cache_data(ttl=60)  # short TTL, just to avoid hammering API on every rerun
+def fetch_leaderboard_payload():
+    resp = requests.get(FASTAPI_URL)
+    resp.raise_for_status()
+    payload = resp.json()
+    return pd.DataFrame(payload["data"]), payload["last_updated"]
 
 @st.cache_data(ttl=3600)
-def fetch_leaderboard_payload():
-    raw_data = filter_athlete(get_athlete())
-    df = pd.DataFrame([athlete.model_dump() for athlete in raw_data])
-
-    # Fetch and aggregate activities per athlete
-    activity_frames = [
-        fetch_athlete_activities(a["data_uid"]) for a in df.to_dict("records")
-    ]
-    activities_df = pd.concat(activity_frames, ignore_index=True)
-
-    agg = (
-        activities_df.groupby(["uid", "type"])["distanceKm"]
-        .sum()
-        .unstack(fill_value=0)
-        .reset_index()
-    )
-
-    # Enrich leaderboard with aggregated distances
-    df = df.merge(agg, left_on="data_uid", right_on="uid", how="left").drop(
-        columns="uid"
-    )
-
-    return df
-
+def refresh_leaderboard_payload():
+    requests.post(FASTAPI_URL + "/refresh")
+    return 
+    
 
 def main():
-
-    # --- 3. APP HEADER & METRICS ---
     st.title("🏃‍♂️ Performance Leaderboard")
     st.markdown("Track real-time athlete rankings, points, and activity streaks.")
     st.write("---")
+    refresh_leaderboard_payload()
+    df, last_updated = fetch_leaderboard_payload()
+   
+    st.caption(f"Last updated: {last_updated}")
 
-    df = fetch_leaderboard_payload()
     # Top 3 Podium Highlights
     st.subheader("🏆 Top Performers")
     pod1, pod2, pod3 = st.columns(3)
