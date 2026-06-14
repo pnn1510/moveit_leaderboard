@@ -6,6 +6,8 @@ import requests
 import streamlit as st
 from leaderboard.services.crawler import crawl
 
+ACTIVITIES_URL = st.secrets["ACTIVIES_URL"]
+# ACTIVITIES_URL = os.environ.get("ACTIVITIES_URL")
 
 class Athlete(BaseModel):
     rank: int
@@ -64,7 +66,7 @@ def filter_athlete(list_ath: list[Athlete]):
 
 
 def get_raw_athlete_activies_by_uid(uid: str):
-    url = st.secrets["ACTIVIES_URL"]
+    url = ACTIVITIES_URL 
 
     payload = json.dumps({"data": {"uid": uid}})
     headers = {"Content-Type": "application/json"}

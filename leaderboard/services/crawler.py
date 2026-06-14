@@ -1,7 +1,7 @@
 import logging
 from playwright.sync_api import Page, sync_playwright
 import streamlit as st
-
+# LEADERBOARD_URL = os.environ.get("LEADERBOARD_URL")
 LEADERBOARD_URL = st.secrets["LEADERBOARD_URL"]
 PAGE_TIMEOUT = 400
 
@@ -59,7 +59,7 @@ def crawl() -> list[dict]:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        page.goto(LEADERBOARD_URL, wait_until="load", timeout=60000)
+        page.goto(LEADERBOARD_URL, wait_until="load", timeout=60000) # type: ignore
         page.wait_for_timeout(3000)
         logger.info("Fetching all pages...")
         all_rows = fetch_all_rows(page)

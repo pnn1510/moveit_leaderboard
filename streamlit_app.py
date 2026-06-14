@@ -3,6 +3,10 @@ import streamlit as st
 import requests
 import subprocess
 import time 
+import os 
+
+os.environ["ACTIVIES_URL"] = st.secrets["ACTIVIES_URL"]
+os.environ["LEADERBOARD_URL"] = st.secrets["ACTIVIES_URL"]
 
 # 1. Start FastAPI in the background on localhost
 @st.cache_resource
@@ -134,5 +138,8 @@ def main():
         width='content',
     )
 
-
-main()
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        fastapi_process.kill()
