@@ -105,10 +105,11 @@ def main():
 
     # --- 5. FILTER LOGIC & MAIN TABLE ---
     # Apply interactive filters to the dataframe
-    filtered_df = df[(df["name"].str.contains(search_query, case=False, na=False))]
 
     # Modern Streamlit Dataframe configuration with custom columns
     if not df.empty:
+        filtered_df = df[(df["name"].str.contains(search_query, case=False, na=False))]
+
         st.dataframe(
             filtered_df,
             column_config={
